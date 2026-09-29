@@ -1,0 +1,88 @@
+Fuel Economy Predictor
+========================================================
+author: Sahiti Baddula
+date: `r format(Sys.Date(), "%d %B %Y")`
+autosize: true
+transition: fade
+
+A Shiny app that predicts a car's miles per gallon
+from four specifications you choose.
+
+**Try it:** the app is deployed on shinyapps.io
+**Code:** `ui.R` and `server.R` are on GitHub
+
+The Problem
+========================================================
+
+Buyers comparing cars want a single question answered: **how much fuel will this
+car actually use?** Specifications are easy to find, but turning them into an
+expected MPG requires a model.
+
+The `mtcars` dataset gives us 32 cars with both specifications and measured fuel
+economy, so the relationship can be estimated directly:
+
+```{r, echo=FALSE, fig.width=9, fig.height=3.2}
+par(mar = c(4, 4, 1, 1), mfrow = c(1, 2))
+plot(mtcars$wt, mtcars$mpg, pch = 19, col = ifelse(mtcars$am == 1, "darkgreen", "steelblue"),
+     xlab = "Weight (1000 lbs)", ylab = "MPG")
+plot(mtcars$hp, mtcars$mpg, pch = 19, col = ifelse(mtcars$am == 1, "darkgreen", "steelblue"),
+     xlab = "Horsepower", ylab = "MPG")
+```
+
+Both weight and horsepower are strongly negatively related to fuel economy —
+but neither alone tells the whole story.
+
+The Model
+========================================================
+
+The app fits one linear model to all 32 cars, using weight, horsepower,
+cylinder count and transmission type:
+
+```{r}
+fit <- lm(mpg ~ wt + hp + factor(cyl) + factor(am), data = mtcars)
+round(summary(fit)$adj.r.squared, 3)
+```
+
+That explains **84%** of the variation in fuel economy. A worked prediction for a
+2,500 lb, 110 hp, 4-cylinder manual car:
+
+```{r}
+newcar <- data.frame(wt = 2.5, hp = 110, cyl = 4, am = 1)
+round(predict(fit, newcar, interval = "prediction"), 1)
+```
+
+So: **25.7 MPG**, with a 95% prediction interval of 20.5 to 31.0.
+
+How It Works
+========================================================
+
+**Input** — four widgets in the sidebar: two sliders (weight, horsepower) and two
+radio button groups (cylinders, transmission), plus a checkbox to toggle the
+prediction interval.
+
+**Server calculation** — a reactive expression rebuilds the input data frame on every
+change and calls `predict()` on the fitted model. Nothing is precomputed.
+
+**Reactive output** — the predicted MPG, its prediction interval, a percentile
+comparison against the dataset, a scatterplot placing your car among the 32 real
+cars, and a table of the five most similar actual vehicles.
+
+The app also **warns when your inputs fall outside the observed data**, so users
+know when a prediction is an extrapolation rather than an interpolation.
+
+Try It
+========================================================
+
+The app answers the question in under a second, with no R knowledge required —
+move a slider, read the number.
+
+**Three things that make it useful:**
+
+1. **Honest uncertainty.** Every prediction comes with a 95% interval, so users see
+   that a point estimate from 32 cars is not precise.
+2. **Grounded in real cars.** The neighbour table shows actual 1974 vehicles with
+   similar specs, so the prediction can be sanity-checked.
+3. **Guards against extrapolation.** Implausible combinations are flagged rather
+   than silently returning a confident-looking number.
+
+Full documentation is built into the app's second tab — no external links needed.
